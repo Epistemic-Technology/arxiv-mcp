@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "arxiv-mcp": {
+      "command": "${ARXIV_MCP_ROOT}/bin/arxiv-mcp-local-server",
+      "env": {}
+    }
+  }
+}
