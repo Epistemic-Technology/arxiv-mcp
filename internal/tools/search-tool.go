@@ -23,9 +23,29 @@ type SearchQuery struct {
 	All               string   `json:"all,omitempty" jsonschema:"search within title, author, abstract, subject"`
 	IdList            []string `json:"id_list,omitempty" jsonschema:"array of arXiv IDs to search within. Can be passed alone to retrieve specific papers"`
 	MaxResults        int      `json:"max,omitempty"`
+	ReturnFields      []string `json:"return_fields,omitempty" jsonschema:"array of fields to return. Returns all if empty"`
 }
 
-type SearchResults arxiv.SearchResults
+type SearchResults struct {
+	Entries []EntryView `json:"entries,omitempty"`
+}
+
+type EntryView struct {
+	ID               *string           `json:"id,omitempty"`
+	Title            *string           `json:"title,omitempty"`
+	Published        *time.Time        `json:"published,omitempty"`
+	Updated          *time.Time        `json:"updated,omitempty"`
+	Summary          *string           `json:"summary,omitempty"`
+	Authors          *[]arxiv.Author   `json:"authors,omitempty"`
+	Categories       *[]arxiv.Category `json:"categories,omitempty"`
+	PrimaryCategory  *arxiv.Category   `json:"primaryCategory,omitempty"`
+	Links            *[]arxiv.Link     `json:"links,omitempty"`
+	Comment          *string           `json:"comment,omitempty"`
+	JournalReference *string           `json:"journalReference,omitempty"`
+	DOI              *string           `json:"doi,omitempty"`
+	AbstractUrl      *string           `json:"abstractUrl,omitempty"`
+	PDFUrl           *string           `json:"pdfUrl,omitempty"`
+}
 
 func SearchTool() *mcp.Tool {
 	inputSchema, err := jsonschema.For[SearchQuery](nil)
@@ -64,7 +84,17 @@ func SearchHandler(ctx context.Context, req *mcp.CallToolRequest, query SearchQu
 	if err != nil {
 		return nil, SearchResults{}, err
 	}
-	return &mcp.CallToolResult{}, SearchResults(results), nil
+
+	// Filter to only requested fields
+	filteredEntries := make([]EntryView, len(results.Entries))
+	for i, entry := range results.Entries {
+		filteredEntries[i] = filterEntry(entry, query.ReturnFields)
+	}
+	searchResults := SearchResults{
+		Entries: filteredEntries,
+	}
+
+	return &mcp.CallToolResult{}, searchResults, nil
 }
 
 func buildSearchQuery(query SearchQuery) (arxiv.SearchQuery, error) {
@@ -121,6 +151,66 @@ func buildSearchQuery(query SearchQuery) (arxiv.SearchQuery, error) {
 	}
 
 	return *arxivQuery, nil
+}
+
+func filterEntry(entry arxiv.EntryMetadata, fields []string) EntryView {
+	view := EntryView{}
+
+	if len(fields) == 0 {
+		view = EntryView{
+			ID:               &entry.ID,
+			Title:            &entry.Title,
+			Published:        &entry.Published,
+			Updated:          &entry.Updated,
+			Summary:          &entry.Summary,
+			Authors:          &entry.Authors,
+			Categories:       &entry.Categories,
+			PrimaryCategory:  &entry.PrimaryCategory,
+			Links:            &entry.Links,
+			Comment:          &entry.Comment,
+			JournalReference: &entry.JournalReference,
+			DOI:              &entry.DOI,
+		}
+		return view
+	}
+
+	for _, field := range fields {
+		switch strings.ToLower(field) {
+		case "id":
+			view.ID = &entry.ID
+		case "title":
+			view.Title = &entry.Title
+		case "published":
+			view.Published = &entry.Published
+		case "updated":
+			view.Updated = &entry.Updated
+		case "summary", "abstract":
+			view.Summary = &entry.Summary
+		case "authors", "author":
+			authors := entry.Authors
+			view.Authors = &authors
+		case "categories", "category":
+			categories := entry.Categories
+			view.Categories = &categories
+		case "primarycategory", "primary_category":
+			view.PrimaryCategory = &entry.PrimaryCategory
+		case "links", "link":
+			links := entry.Links
+			view.Links = &links
+		case "comment":
+			view.Comment = &entry.Comment
+		case "journalreference", "journal_reference", "journal":
+			view.JournalReference = &entry.JournalReference
+		case "doi":
+			view.DOI = &entry.DOI
+		case "abstracturl", "abstract_url":
+			view.AbstractUrl = &entry.AbstractUrl
+		case "pdfurl", "pdf_url", "pdf":
+			view.PDFUrl = &entry.PDFUrl
+		}
+	}
+
+	return view
 }
 
 func parseRelativeDate(relative string) (time.Time, error) {
