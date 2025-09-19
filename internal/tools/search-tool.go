@@ -2,6 +2,9 @@ package tools
 
 import (
 	"context"
+	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Epistemic-Technology/arxiv/arxiv"
@@ -10,14 +13,16 @@ import (
 )
 
 type SearchQuery struct {
-	Title           string `json:"title,omitempty"`
-	Author          string `json:"author,omitempty"`
-	Abstract        string `json:"abstract,omitempty"`
-	SubjectCategory string `json:"subject_category,omitempty"`
-	SubmittedSince  string `json:"submitted_since,omitempty" pattern:"\\d{4}-\\d{2}-\\d{2}" jsonschema:"date in YYYY-MM-DD"`
-	SubmittedBefore string `json:"submitted_before,omitempty" pattern:"\\d{4}-\\d{2}-\\d{2}" jsonschema:"date in YYYY-MM-DD"`
-	All             string `json:"all,omitempty"`
-	MaxResults      int    `json:"max,omitempty"`
+	Title             string   `json:"title,omitempty"`
+	Author            string   `json:"author,omitempty"`
+	Abstract          string   `json:"abstract,omitempty"`
+	SubjectCategory   string   `json:"subject_category,omitempty" jsonschema:"subject category, using arXiv category taxonomy"`
+	SubmittedSince    string   `json:"submitted_since,omitempty" pattern:"\\d{4}-\\d{2}-\\d{2}" jsonschema:"date in YYYY-MM-DD"`
+	SubmittedBefore   string   `json:"submitted_before,omitempty" pattern:"\\d{4}-\\d{2}-\\d{2}" jsonschema:"date in YYYY-MM-DD"`
+	SubmittedRelative string   `json:"submitted_relative,omitempty" pattern:"[0-9]+ (days|weeks|months|years)" jsonschema:"relative date in days, weeks, months, or years from today"`
+	All               string   `json:"all,omitempty" jsonschema:"search within title, author, abstract, subject"`
+	IdList            []string `json:"id_list,omitempty" jsonschema:"array of arXiv IDs to search within. Can be passed alone to retrieve specific papers"`
+	MaxResults        int      `json:"max,omitempty"`
 }
 
 type SearchResults arxiv.SearchResults
@@ -51,6 +56,9 @@ func SearchHandler(ctx context.Context, req *mcp.CallToolRequest, query SearchQu
 		SortBy:     arxiv.SortByRelevance,
 		SortOrder:  arxiv.SortOrderDescending,
 	}
+	if len(query.IdList) > 0 {
+		params.IdList = query.IdList
+	}
 	arxivClient := arxiv.NewClient()
 	results, err := arxivClient.Search(ctx, params)
 	if err != nil {
@@ -81,7 +89,15 @@ func buildSearchQuery(query SearchQuery) (arxiv.SearchQuery, error) {
 		arxivQuery = arxivQuery.All(query.All)
 	}
 
-	if query.SubmittedSince != "" || query.SubmittedBefore != "" {
+	// Handle relative date if provided and no explicit dates are set
+	if query.SubmittedRelative != "" && query.SubmittedSince == "" && query.SubmittedBefore == "" {
+		since, err := parseRelativeDate(query.SubmittedRelative)
+		if err != nil {
+			return *arxivQuery, err
+		}
+		before := time.Now()
+		arxivQuery = arxivQuery.SubmittedBetween(since, before)
+	} else if query.SubmittedSince != "" || query.SubmittedBefore != "" {
 		var since, before time.Time
 		if query.SubmittedBefore != "" {
 			var err error
@@ -105,4 +121,32 @@ func buildSearchQuery(query SearchQuery) (arxiv.SearchQuery, error) {
 	}
 
 	return *arxivQuery, nil
+}
+
+func parseRelativeDate(relative string) (time.Time, error) {
+	parts := strings.Fields(relative)
+	if len(parts) != 2 {
+		return time.Time{}, fmt.Errorf("invalid relative date format: %s", relative)
+	}
+
+	num, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return time.Time{}, fmt.Errorf("invalid number in relative date: %s", parts[0])
+	}
+
+	unit := strings.ToLower(parts[1])
+	now := time.Now()
+
+	switch unit {
+	case "day", "days":
+		return now.AddDate(0, 0, -num), nil
+	case "week", "weeks":
+		return now.AddDate(0, 0, -num*7), nil
+	case "month", "months":
+		return now.AddDate(0, -num, 0), nil
+	case "year", "years":
+		return now.AddDate(-num, 0, 0), nil
+	default:
+		return time.Time{}, fmt.Errorf("invalid time unit in relative date: %s", unit)
+	}
 }
