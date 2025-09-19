@@ -111,6 +111,11 @@ build-all-platforms:
 inspect:
 	npx @modelcontextprotocol/inspector $(ARXIV_MCP_ROOT)/$(BINARY_DIR)/arxiv-mcp-local-server
 
+# Add local server to claude code
+.PHONY: cc-add-mcp
+cc-add-mcp:
+	claude mcp add arxiv-mcp-local-server --scope project -- $(ARXIV_MCP_ROOT)/$(BINARY_DIR)/arxiv-mcp-local-server
+
 # Help target
 .PHONY: help
 help:
@@ -132,4 +137,5 @@ help:
 	@echo "  check                 - Run fmt, vet, and test"
 	@echo "  build-all-platforms   - Build for multiple platforms"
 	@echo "  inspect               - Run the MCP inspector on local server"
+	@echo "  cc-add-mcp            - Add local server to claude code"
 	@echo "  help                  - Show this help message"
