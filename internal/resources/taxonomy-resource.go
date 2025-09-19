@@ -15,7 +15,7 @@ var TaxonomyResource = mcp.Resource{
 }
 
 //go:embed arxiv-taxonomy.json
-var TaxonomyData string
+var taxonomyData string
 
 func TaxonomyResourceHandler(_ context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
 	return &mcp.ReadResourceResult{
@@ -23,7 +23,7 @@ func TaxonomyResourceHandler(_ context.Context, req *mcp.ReadResourceRequest) (*
 			{
 				URI:      req.Params.URI,
 				MIMEType: "application/json",
-				Text:     TaxonomyData,
+				Text:     taxonomyData,
 			},
 		},
 	}, nil
