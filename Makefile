@@ -12,7 +12,7 @@ GOMOD=$(GOCMD) mod
 BINARY_DIR=bin
 
 # Binary names
-BINARIES=arxiv-mcp-local-server
+BINARIES=arxiv-mcp-local-server arxiv-taxonomy-scraper
 
 # Build flags
 LDFLAGS=-ldflags "-s -w"
@@ -32,6 +32,11 @@ build: $(BINARIES)
 arxiv-mcp-local-server:
 	@mkdir -p $(BINARY_DIR)
 	$(GOBUILD) $(LDFLAGS) -o $(BINARY_DIR)/arxiv-mcp-local-server ./cmd/arxiv-mcp-local-server
+
+.PHONY: arxiv-taxonomy-scraper
+arxiv-taxonomy-scraper:
+	@mkdir -p $(BINARY_DIR)
+	$(GOBUILD) $(LDFLAGS) -o $(BINARY_DIR)/arxiv-taxonomy-scraper ./cmd/arxiv-taxonomy-scraper
 
 # Run tests
 .PHONY: test
@@ -108,6 +113,7 @@ help:
 	@echo "  all                   - Build all binaries (default)"
 	@echo "  build                 - Build all binaries"
 	@echo "  arxiv-mcp-local-server - Build arxiv-mcp-local-server binary"
+	@echo "  arxiv-taxonomy-scraper - Build arxiv-taxonomy-scraper binary"
 	@echo "  test                  - Run tests"
 	@echo "  test-coverage         - Run tests with coverage report"
 	@echo "  fmt                   - Format code"
