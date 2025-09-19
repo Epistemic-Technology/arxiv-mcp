@@ -106,6 +106,11 @@ build-all-platforms:
 	GOOS=linux GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o $(BINARY_DIR)/arxiv-mcp-local-server-linux-arm64 ./cmd/arxiv-mcp-local-server
 	GOOS=windows GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o $(BINARY_DIR)/arxiv-mcp-local-server-windows-amd64.exe ./cmd/arxiv-mcp-local-server
 
+# Run the MCP inspector on local server
+.PHONY: inspect
+inspect:
+	npx @modelcontextprotocol/inspector $(ARXIV_MCP_ROOT)/$(BINARY_DIR)/arxiv-mcp-local-server
+
 # Help target
 .PHONY: help
 help:
@@ -126,4 +131,5 @@ help:
 	@echo "  install               - Install binaries to GOPATH/bin"
 	@echo "  check                 - Run fmt, vet, and test"
 	@echo "  build-all-platforms   - Build for multiple platforms"
+	@echo "  inspect               - Run the MCP inspector on local server"
 	@echo "  help                  - Show this help message"
