@@ -12,7 +12,7 @@ import (
 func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8080"
+		port = "8888"
 	}
 	httpHandler := mcp.NewStreamableHTTPHandler(getServerForRequest, nil)
 	if err := http.ListenAndServe(":"+port, httpHandler); err != nil {
